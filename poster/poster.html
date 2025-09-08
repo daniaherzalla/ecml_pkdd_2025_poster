@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+  <title>Graph Neural Networks for Jamming Source Localization</title>
+
+  <!-- MathJax for LaTeX equations in the Loss Function section -->
+  <script>
+    window.MathJax = {
+      tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['\\[', '\\]'], ['$$','$$']] },
+      svg: { fontCache: 'global' }
+    };
+  </script>
+  <script async id="MathJax-script" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+
+  <style>
+    @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #f8f9fa;
+      color: #2d3436;
+      line-height: 1.6;
+    }
+
+    /* ---------- A1 print setup ---------- */
+    @page { size: 594mm 841mm; margin: 0; } /* A1 portrait */
+    @media print {
+      html, body { width: 594mm; height: 841mm; background: #fff !important; }
+      .poster { width: 594mm; height: 841mm; margin: 0 !important; box-shadow: none !important; }
+      * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
+
+    /* ---------- On-screen layout ---------- */
+    .poster {
+      max-width: 1400px;
+      margin: 20px auto;
+      background: #fff;
+      box-shadow: 0 2px 20px rgba(0,0,0,0.08);
+    }
+
+    .header {
+      padding: 60px 80px;
+      border-bottom: 1px solid #e9ecef;
+      text-align: center;
+    }
+    .title { font-size: 42px; font-weight: 700; color: #212529; margin-bottom: 20px; letter-spacing: -0.5px; }
+    .authors { font-size: 18px; color: #495057; margin-bottom: 8px; font-weight: 500; }
+    .affiliation { font-size: 14px; color: #6c757d; font-weight: 400; }
+
+    .content {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1px;
+      background: #e9ecef;
+      margin: 1px;
+      grid-auto-flow: dense;
+    }
+
+    .section { background: #fff; padding: 35px; }
+    .section-title { font-size: 18px; font-weight: 600; color: #212529; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .section-subtitle { font-size: 16px; font-weight: 600; color: #212529; margin: 10px 0 12px; }
+    .section-content { font-size: 14px; color: #495057; line-height: 1.7; }
+
+    .full-width { grid-column: span 3; }
+    .two-columns { grid-column: span 2; }
+
+    .figure { margin: 18px 0; text-align: center; }
+    .figure img { display: block; max-width: 100%; height: auto; }
+    .figure-caption { font-size: 12px; color: #6c757d; margin-top: 8px; font-style: italic; }
+
+    .highlight { background: #f8f9fa; padding: 12px 14px; border-left: 3px solid #495057; margin: 16px 0; font-size: 13px; }
+
+    /* Key Contributions (compact boxes under Intro) */
+    .contrib-mini {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .contrib-card {
+      background: #fff; border: 1px solid #dee2e6; border-radius: 6px;
+      padding: 8px 10px; font-size: 13px;
+    }
+    .contrib-num {
+      display: inline-block; width: 20px; height: 20px;
+      border: 2px solid #212529; color: #212529; background: transparent;
+      text-align: center; line-height: 18px; font-size: 11px; font-weight: 700; margin-right: 8px; border-radius: 4px; /* square */
+    }
+
+    .results-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 10px 0 6px;
+      font-size: 13px;
+    }
+    .results-table th {
+      background: #f8f9fa; padding: 10px 12px; text-align: left; font-weight: 600;
+      border-bottom: 2px solid #dee2e6; white-space: nowrap;
+    }
+    .results-table td { padding: 9px 12px; border-bottom: 1px solid #e9ecef; white-space: nowrap; }
+    .results-table tr:hover { background: #f8f9fa; }
+    .row-emph { background: #fff7e6; font-weight: 600; }
+
+    /* Metric boxes (small) */
+    .metric {
+      display: inline-block; padding: 14px 16px; text-align: center; background: #f8f9fa;
+      margin: 8px 0 6px 0; min-width: 120px; border: 1px solid #e9ecef; border-radius: 6px;
+    }
+    .metric-value { font-size: 22px; font-weight: 700; color: #212529; display: block; }
+    .metric-label { font-size: 10.5px; color: #6c757d; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 3px; }
+
+    .equation {
+      background: #f8f9fa; padding: 18px; margin: 12px 0 4px; text-align: left;
+      font-size: 16px; border: 1px solid #e9ecef; overflow: hidden;
+    }
+    .equation .mjx-container { margin: 0 !important; } /* tighter MathJax spacing */
+
+    /* Trajectory thumbnails (smaller, no borders) */
+    .thumb-row {
+      display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; align-items: start; margin-top: 8px;
+    }
+    .thumb-row img {
+      width: 85%;
+      margin: 0 auto;
+      background: transparent;
+      border: none;
+    }
+    .thumb-caption { font-size: 11px; color: #6c757d; text-align: center; margin-top: 2px; }
+
+    .subtle { font-size: 12.5px; color: #6c757d; margin: 8px 0 12px; }
+    .subtle-para { font-size: 13px; color: #495057; margin: 6px 0 12px; }
+
+    /* Right-side metric stacks beside tables */
+    .side-metrics { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; justify-content: flex-start; margin-left: 8px; margin-top: 40px;}
+
+    /* Method hero image: slightly larger without borders */
+    .method-hero { width: 108%; margin-left: -4%; height: auto; }
+
+    .footer {
+      padding: 30px; text-align: center; background: #f8f9fa; font-size: 13px;
+      color: #6c757d; border-top: 1px solid #e9ecef;
+    }
+  </style>
+</head>
+<body>
+  <div class="poster">
+    <div class="header">
+      <h1 class="title">Graph Neural Networks for Jamming Source Localization</h1>
+      <div class="authors">Dania Herzalla¹, Willian T. Lunardi¹, Martin Andreoni¹²</div>
+      <div class="affiliation">¹Technology Innovation Institute, Abu Dhabi, UAE &nbsp;&nbsp; ²Khalifa University</div>
+    </div>
+
+    <div class="content">
+      <!-- Introduction (left column) -->
+      <div class="section">
+        <h2 class="section-title">Introduction</h2>
+        <div class="section-content">
+          <p><strong>Problem:</strong> Jamming attacks threaten wireless networks by transmitting intentional interference, disrupting critical services.</p>
+
+          <div class="highlight">
+            Classical methods rely on idealized propagation models and degrade under real-world RF conditions with noise and multipath effects.
+          </div>
+
+          <p><strong>Our Solution:</strong> Reformulate localization as an inductive <em>graph regression</em> task and propose <strong>CAGE</strong> (Confidence-guided Adaptive Global Estimation), which fuses a GNN predictor with a domain prior (WCL) via a learned confidence α.</p>
+
+          <!-- Key Contributions (compact boxes under Intro) -->
+          <h3 class="section-subtitle" style="margin-top:12px;">Key Contributions</h3>
+          <div class="contrib-mini">
+            <div class="contrib-card"><span class="contrib-num">1</span>First GNN-based approach to jamming localization; robust under sparse/obfuscated RF.</div>
+            <div class="contrib-card"><span class="contrib-num">2</span><strong>CAGE</strong> confidence-weighted fusion adapts reliance on GNN vs WCL across distance.</div>
+            <div class="contrib-card"><span class="contrib-num">3</span>Consistent gains in static &amp; dynamic settings, incl. “outside region” cases.</div>
+            <!-- NEW #4 -->
+            <div class="contrib-card"><span class="contrib-num">4</span>Ablations &amp; confidence analysis show full $\mathcal{L}_{\text{CAGE}}$ (with supernode/MLP weighting) yields best accuracy and distance-aware $\alpha$.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Method (spans two columns to the right) -->
+      <div class="section two-columns">
+        <h2 class="section-title">Method</h2>
+        <div class="section-content">
+          <!-- Architecture -->
+          <div class="figure" style="margin-top:0;">
+            <img src="./images/figure1.png"
+                 alt="CAGE Architecture: Graph construction → GNN encoder → Adaptive fusion"
+                 class="method-hero" loading="eager" />
+            <div class="figure-caption">CAGE architecture: Graph construction → GNN encoder → Adaptive fusion.</div>
+          </div>
+
+          <!-- Loss function -->
+          <h3 class="section-subtitle">Loss Function</h3>
+          <div class="equation">
+            <p><strong>Encouraging independent learning of the GNN regressor.</strong> Optimizing only the adaptive loss risks turning the GNN into a residual corrector for WCL. We adopt a joint loss:</p>
+            \[
+              \mathcal{L}_{\text{CAGE}} = \frac{1}{2}\left(\mathcal{L}_{\text{GNN}} + \mathcal{L}_{\text{Adapt}}\right)
+              + \lambda \sum_{m \in \mathcal{B}} \left(1 - \boldsymbol{\alpha}^{(m)}\right)^2
+            \]
+            \[
+              \mathcal{L}_{\text{GNN}} = \frac{1}{|\mathcal{B}|} \sum_{m \in \mathcal{B}}
+              \left\| \hat{\mathbf{x}}_j^{(m)} - \hat{\mathbf{x}}_{\text{GNN}}^{(m)} \right\|^2
+            \]
+            \[
+              \mathcal{L}_{\text{Adapt}} = \frac{1}{|\mathcal{B}|} \sum_{m \in \mathcal{B}}
+              \Big\| \hat{\mathbf{x}}_j^{(m)} - \big( \boldsymbol{\alpha}^{(m)} \odot \hat{\mathbf{x}}_{\text{GNN}}^{(m)} +
+              ( \mathbf{1} - \boldsymbol{\alpha}^{(m)} ) \odot \hat{\mathbf{x}}_{\text{WCL}}^{(m)} \big) \Big\|^2
+            \]
+            <p class="subtle" style="margin-top:8px;">
+              where $\hat{\mathbf{x}}_j^{(m)}$ is the ground-truth jammer position in a normalized angular representation,
+              $\hat{\mathbf{x}}_{\text{GNN}}^{(m)}$ is the GNN’s predicted position, and $\hat{\mathbf{x}}_{\text{WCL}}^{(m)}$ is the WCL estimate.
+              The confidence vector $\boldsymbol{\alpha}^{(m)} \in \mathbb{R}^5$, learned from the supernode representation, dynamically balances
+              the contribution of GNN and WCL via element-wise weighting ($\odot$).
+            </p>
+            <p class="subtle" style="margin-top:6px;">
+              $\mathcal{L}_{\text{GNN}}$ trains the GNN to predict the jammer’s position directly; $\mathcal{L}_{\text{Adapt}}$ optimizes the weighted fusion of GNN and WCL; the final regularizer discourages over-reliance on WCL by nudging $\boldsymbol{\alpha}$ toward 1. We set $\lambda = 0$ in experiments, retaining the term for flexibility.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Experimental Results -->
+      <div class="section full-width">
+        <h2 class="section-title">Experimental Results</h2>
+        <div class="section-content">
+          <p class="subtle-para">
+            We evaluate CAGE in two settings. <em>Static</em>: fixed receiver layouts with the jammer placed either inside or outside the sampled region to stress extrapolation beyond measured signals. <em>Dynamic</em>: a mobile receiver approaches and encircles the jammer, enabling analysis of accuracy across distance bins and how performance improves as spatially diverse measurements accumulate.
+          </p>
+
+          <!-- Two-column grid: Static (left) vs Dynamic (right) -->
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px;">
+            <!-- Static Evaluation -->
+            <div style="display:grid; grid-template-columns: 1fr auto; gap:12px; align-items:start;">
+              <div>
+                <h3 class="section-subtitle">Static Evaluation</h3>
+                <table class="results-table" aria-label="Static scenarios RMSE">
+                  <thead>
+                    <tr>
+                      <th>Method</th>
+                      <th>Inside (x<sub>j</sub> ∈ R)</th>
+                      <th>Outside (x<sub>j</sub> ∈ A \\ R)</th>
+                      <th>Overall</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr><td>WCL</td><td>53.3</td><td>232.8</td><td>143.1</td></tr>
+                    <tr><td>MLAT</td><td>123.1</td><td>334.8</td><td>229.0</td></tr>
+                    <tr><td>MLP</td><td>44.4</td><td>115.4</td><td>79.9</td></tr>
+                    <tr><td>GCN</td><td>45.3</td><td>112.2</td><td>78.8</td></tr>
+                    <tr><td>PNA</td><td>40.4</td><td>109.9</td><td>75.2</td></tr>
+                    <tr><td>GAT</td><td>40.0</td><td>108.8</td><td><span style="color:#0d6efd;">74.4</span></td></tr>
+                    <tr class="row-emph"><td><strong>CAGE</strong></td><td><strong>35.7</strong></td><td><strong>97.5</strong></td><td><strong>66.6</strong></td></tr>
+                  </tbody>
+                </table>
+                <div class="subtle">RMSE (m). CAGE reduces error both inside and outside the sampled region.</div>
+              </div>
+              <div class="side-metrics">
+                <span class="metric">
+                  <span class="metric-value">−53.5%</span>
+                  <span class="metric-label">RMSE vs WCL</span>
+                </span>
+                <span class="metric">
+                  <span class="metric-value">−10.5%</span>
+                  <span class="metric-label">RMSE vs GAT</span>
+                </span>
+              </div>
+            </div>
+
+            <!-- Dynamic Evaluation -->
+            <div style="display:grid; grid-template-columns: 1fr auto; gap:12px; align-items:start;">
+              <div>
+                <h3 class="section-subtitle">Dynamic Evaluation</h3>
+                <table class="results-table" aria-label="Dynamic trajectories RMSE by distance bin">
+                  <thead>
+                    <tr>
+                      <th>Method</th>
+                      <th>d &gt; 500</th>
+                      <th>500–200</th>
+                      <th>200–100</th>
+                      <th>100–50</th>
+                      <th>50–0</th>
+                      <th>Mean</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr><td>WCL</td><td>372.4</td><td>253.1</td><td>111.8</td><td>45.4</td><td>11.6</td><td>66.6</td></tr>
+                    <tr><td>MLAT</td><td>275.2</td><td>234.3</td><td>183.9</td><td>147.0</td><td>99.1</td><td>124.7</td></tr>
+                    <tr><td>MLP</td><td>182.1±9.7</td><td>114.8±7.8</td><td>49.1±3.2</td><td>28.3±1.2</td><td>19.0±1.0</td><td>35.0±0.7</td></tr>
+                    <tr><td>GCN</td><td>161.5±4.3</td><td>91.1±1.2</td><td>34.2±0.1</td><td>19.1±0.4</td><td>10.8±0.2</td><td>25.6±0.3</td></tr>
+                    <tr><td>PNA</td><td>214.1±7.3</td><td>129.5±5.2</td><td>56.9±2.4</td><td>34.9±1.7</td><td>24.9±1.1</td><td>41.5±1.2</td></tr>
+                    <tr><td>GAT</td><td>131.0±13.6</td><td>70.0±0.2</td><td>33.2±1.5</td><td>17.8±0.6</td><td>9.6±0.5</td><td>21.3±0.6</td></tr>
+                    <tr class="row-emph"><td><strong>CAGE</strong></td><td><strong>104.0±5.9</strong></td><td><strong>53.4±0.2</strong></td><td><strong>23.5±0.7</strong></td><td><strong>14.0±0.4</strong></td><td><strong>5.7±0.2</strong></td><td><strong>15.7±0.1</strong></td></tr>
+                  </tbody>
+                </table>
+                <div class="subtle">RMSE (m) by distance bin. CAGE gains are largest at long range yet remain best near the jammer.</div>
+              </div>
+              <div class="side-metrics">
+                <span class="metric">
+                  <span class="metric-value">−76.4%</span>
+                  <span class="metric-label">Mean RMSE vs WCL</span>
+                </span>
+                <span class="metric">
+                  <span class="metric-value">−26.3%</span>
+                  <span class="metric-label">Mean RMSE vs GAT</span>
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Trajectory snapshots row (full width) -->
+          <div class="figure" style="margin-top:18px;">
+            <div class="thumb-row">
+              <div><img src="./images/figure3a.png" alt="t = 0"><div class="thumb-caption">t = 0</div></div>
+              <div><img src="./images/figure3b.png" alt="t = 0.2"><div class="thumb-caption">t = 0.2</div></div>
+              <div><img src="./images/figure3c.png" alt="t = 0.4"><div class="thumb-caption">t = 0.4</div></div>
+              <div><img src="./images/figure3d.png" alt="t = 0.6"><div class="thumb-caption">t = 0.6</div></div>
+              <div><img src="./images/figure3e.png" alt="t = 0.8"><div class="thumb-caption">t = 0.8</div></div>
+              <div><img src="./images/figure3f.png" alt="t = 1.0"><div class="thumb-caption">t = 1.0</div></div>
+            </div>
+            <div class="figure-caption">Trajectory snapshots along the path from onset of jamming attack.</div>
+          </div>
+
+          <!-- Confidence weighting: intro + plots -->
+          <h3 class="section-subtitle" style="margin-top:18px;">Confidence Weighting (α)</h3>
+          <p class="subtle-para">
+            How we train CAGE determines when it trusts GNN predictions vs the WCL prior. We compare training with only the adaptive loss against the full joint loss. On the encircling trajectory, broad spatial context at long range favors the GNN, while dense, radially symmetric sampling near the jammer favors WCL, so α should start high and gradually shift toward WCL as distance shrinks.
+          </p>
+          <div class="figure" style="display:grid; grid-template-columns:1fr 1fr; gap:16px; align-items:start;">
+            <div>
+              <img src="./images/figure4a.png" alt="Figure 4a — Confidence vs distance using L_adapt only" style="width:92%; height:auto; margin:0 auto;">
+              <div class="figure-caption">Training with L<sub>Adapt</sub> alone yields low α across distances (over-reliance on WCL).</div>
+            </div>
+            <div>
+              <img src="./images/figure4b.png" alt="Figure 4b — Confidence vs distance using L_CAGE" style="width:92%; height:auto; margin:0 auto;">
+              <div class="figure-caption">With full L<sub>CAGE</sub>, α is high at long range (trust GNN) and shifts toward WCL near the jammer.</div>
+            </div>
+          </div>
+          <div class="highlight" style="margin-top:10px;">
+            <strong>Takeaway:</strong> L<sub>CAGE</sub> learns a distance-aware fusion, avoiding over-reliance on WCL and improving robustness.
+          </div>
+        </div>
+      </div>
+
+      <!-- Conclusions -->
+      <div class="section full-width">
+        <h2 class="section-title">Conclusions</h2>
+        <div class="section-content">
+          <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:30px;">
+            <div>
+              <strong>Summary</strong>
+              <p style="margin-top:8px;">CAGE delivers consistent gains in both static and dynamic localization, including challenging “outside region” cases.</p>
+            </div>
+            <div>
+              <strong>Why It Works</strong>
+              <p style="margin-top:8px;">Confidence-weighted fusion adapts to distance, leveraging learned spatial structure without abandoning domain priors.</p>
+            </div>
+            <div>
+              <strong>Next Steps</strong>
+              <p style="margin-top:8px;">Temporal GNN architectures, cross-domain generalization, and real-world deployment.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <strong>Code:</strong> github.com/tiiuae/gnn-jamming-source-localization &nbsp;&nbsp;|&nbsp;&nbsp;
+      <strong>Contact:</strong> {dania.herzalla, willian.lunardi, martin.andreoni}@tii.ae
+    </div>
+  </div>
+</body>
+</html>
